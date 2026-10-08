@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simons Preview</title>
+<style>
+  :root { --bg: #f3f0f8; --fg: #2b2733; --sub: #7d7690; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #1d1b22; --fg: #eee; --sub: #9a93ad; } }
+  body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--fg);
+         font-family: system-ui, "Malgun Gothic", sans-serif;
+         display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
+  #stage { position: relative; width: min(420px, 90vw); aspect-ratio: 1; transform-origin: 50% 100%;
+           transition: transform 60ms ease-out; user-select: none; }
+  #stage img { position: absolute; inset: 0; width: 100%; height: 100%; visibility: hidden; pointer-events: none; }
+  #stage img.on { visibility: visible; }
+  #hit { position: absolute; inset: 8% 4% 0 4%; cursor: pointer; }
+  #state { font-size: 14px; color: var(--sub); font-variant-numeric: tabular-nums; }
+  .hint { font-size: 13px; color: var(--sub); text-align: center; line-height: 1.6; padding: 0 16px; }
+  #typebox { width: min(420px, 90vw); box-sizing: border-box; font: inherit; font-size: 14px; padding: 8px 10px;
+             border-radius: 8px; border: 1px solid var(--sub); background: transparent; color: var(--fg); }
+</style>
+</head>
+<body>
+  <div id="stage"><div id="hit"></div></div>
+  <div id="state">start</div>
+  <input id="typebox" placeholder="여기에 막 타이핑해 봐 (500타/분 이상 3초 유지 → 파이어!)" autocomplete="off">
+  <div class="hint">타이핑 → onair · yawning · tutor · onfire 번갈아 · 500타/분 이상 유지 → onfire 고정<br>
+    캐릭터 클릭 → 도넛 + 와삭바삭 + 푸딩 출렁 · 15초 무입력 → 꾸벅꾸벅</div>
+<script>
+const BASE = 'assets/simons/';
+const T = { poseMinMs: 700, fireCPM: 500, fireWindowMs: 3000, fireCheckMs: 200, dozeAfterMs: 15000, donutHoldMs: 1600 };
+const CYCLE = ['onair', 'yawning', 'tutor', 'onfire'];
+const stage = document.getElementById('stage'), stateEl = document.getElementById('state');
+const el = {};
+for (const n of ['start', ...CYCLE, 'donut', 'dozeoff']) {
+  const i = new Image(); i.src = BASE + n + '.webp'; i.draggable = false; stage.prepend(i); el[n] = i;
+}
+let cur = null, base = 'start', idx = -1, since = 0, presses = [], fire = false, donutUntil = 0, dozeT, fireT, revertT;
+const now = () => performance.now();
+function show(n) { if (cur) el[cur].classList.remove('on'); el[n].classList.add('on'); cur = n; label(); }
+function cpm(t) { presses = presses.filter(p => t - p < T.fireWindowMs); return Math.round(presses.length * 60000 / T.fireWindowMs); }
+function label() { stateEl.textContent = `${cur}${fire ? ' 🔥' : ''} · ${cpm(now())} 타/분`; }
+function next(t) { idx = (idx + 1) % CYCLE.length; since = t; base = CYCLE[idx]; }
+function armDoze() { clearTimeout(dozeT); dozeT = setTimeout(() => { if (now() >= donutUntil) { fire = false; presses = []; show('dozeoff'); } }, T.dozeAfterMs); }
+function bounce() { stage.style.transform = 'scaleY(0.97)'; setTimeout(() => stage.style.transform = '', 60); }
+function tick() {
+  const t = now();
+  if (fire && cpm(t) < T.fireCPM) { fire = false; idx = -1; next(t); if (t >= donutUntil && cur !== 'dozeoff') show(base); }
+  if (fire) fireT = setTimeout(tick, T.fireCheckMs); else label();
+}
+addEventListener('keydown', e => {
+  if (e.repeat || ['Shift', 'Control', 'Alt', 'Meta', 'HangulMode', 'HanjaMode'].includes(e.key)) return;
+  const t = now(); armDoze(); presses.push(t);
+  if (cpm(t) >= T.fireCPM) { if (!fire) { fire = true; since = t; clearTimeout(fireT); fireT = setTimeout(tick, T.fireCheckMs); } base = 'onfire'; }
+  else if (fire) { fire = false; idx = -1; next(t); }
+  else if (idx < 0 || base === 'start' || t - since >= T.poseMinMs) next(t);
+  if (t >= donutUntil) { show(base); bounce(); } else label();
+});
+document.getElementById('hit').addEventListener('mousedown', e => {
+  if (e.button !== 0) return;
+  armDoze(); donutUntil = now() + T.donutHoldMs; show('donut');
+  try { const s = new Audio(BASE + 'crunch.wav'); s.volume = 0.9; s.play().catch(() => {}); } catch (err) {}
+  const kf = [];
+  for (let f = 0; f <= 24; f++) { const t = f * 0.03, a = 0.11 * Math.exp(-t / 0.2), sy = 1 - a * Math.cos(2 * Math.PI * 4.2 * t); kf.push({ transform: `scale(${1 + (1 - sy) * 0.7}, ${sy})` }); }
+  stage.animate(kf, { duration: 720, easing: 'linear' });
+  clearTimeout(revertT); revertT = setTimeout(() => show(base), T.donutHoldMs);
+});
+show('start'); armDoze(); document.getElementById('typebox').focus();
+</script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+{
+  "name": "simons",
+  "appName": "시몬스 데스크톱 컴패니언",
+  "size": [600, 600],
+  "anchor": "bottom-center",
+  "sprites": {
+    "start": "start.webp",
+    "typing": ["onair.webp", "yawning.webp", "tutor.webp", "onfire.webp"],
+    "onfire": "onfire.webp",
+    "donut": "donut.webp",
+    "dozeoff": "dozeoff.webp",
+    "donutSound": "crunch.wav"
+  },
+  "timing": {
+    "poseMinMs": 700,
+    "fireCPM": 500,
+    "fireWindowMs": 3000,
+    "fireCheckMs": 200,
+    "dozeAfterMs": 15000,
+    "donutHoldMs": 1600
+  },
+  "squash": { "scaleY": 0.97, "ms": 60 },
+  "jelly": {
+    "frames": 24,
+    "frameMs": 30,
+    "formula": "amp=0.11*exp(-t/0.2); scaleY=1-amp*cos(2π·4.2·t); scaleX=1+(1-scaleY)*0.7; anchor bottom-center"
+  },
+  "interaction": {
+    "leftClickOnCharacter": "donut + crunch + jelly",
+    "rightClickMenu": ["크기 조절", "종료"],
+    "resize": "drag outward = bigger, toward center = smaller"
+  }
+}
